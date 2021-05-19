@@ -18,18 +18,28 @@ cache = redis.StrictRedis(host="redis", port=6379, decode_responses=True)
 
 
 def get_data_from_redis(key):
-    sum_score = redis_sum_all_scores(key)
-    return str(sum_score)
+    data = redis_sum_all_scores_by(key)
+    return json.dumps(data)
     #print (key, sum_score)
 
-def redis_sum_all_scores(key):
+def redis_sum_all_scores_by(key):
     print (f"getting user data: {key}")
-    scores = cache.hgetall(key)
-    scores = list(scores.values())
-    scores = [int(x) for x in scores]
+    _data = cache.hgetall(key)
+    data = [json.loads(x) for x in _data.values()]
+    scores = [int(each['score']) for each in data]
     sum_score = sum(scores)
-    print (f"user: {key}, score: {sum_score}")
-    return sum_score
+    new_data = {
+        "user_id": data[-1]['user_id'],
+        "display_name": data[-1]['display_name'],
+        "profile_picture": data[-1]['profile_picture'],
+        "score": sum_score
+    }
+    return new_data
+
+def redis_create_snapshot(data):
+    ts = round(time.time() * 1000)
+    cache.zadd("snapshot", {json.dumps(data): ts})
+
 
 
 
@@ -61,10 +71,11 @@ async def pull(websocket, path):
         if not redis_key:
             continue
         
-        new_score = get_data_from_redis(redis_key)
+        new_data = get_data_from_redis(redis_key)
 
         # sum the result
-        leaderboard[redis_key] = new_score
+        leaderboard[redis_key] = new_data
+        redis_create_snapshot(leaderboard)
 
 
         await websocket.send(json.dumps(leaderboard))
