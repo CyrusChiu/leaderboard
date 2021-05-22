@@ -3,8 +3,8 @@
       <div class="Athlete__rank">
         <h5> {{ rank+1 }} </h5>
       </div>
-      <img class="avator" :src="avator[stringToNum(data.user_name) % 6]">
-      <h2 class="Athlete__name">{{ data.user_name }}</h2>
+      <img class="avator" :src="avator[stringToNum(data.display_name) % 6]">
+      <h2 class="Athlete__name">{{ data.display_name }}</h2>
       <h4 class="Athlete__reps"> {{ data.score }} </h4>
   </div>
 </template>

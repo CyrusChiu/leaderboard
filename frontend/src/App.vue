@@ -3,12 +3,13 @@
     <nav>
       <img src="@/assets/images/logoo.png">
     </nav>
-        <div style="position: relative;">
+    <div style="padding: 30px; position: relative;">
       <div id="background-extension"></div>
       <div class="CompetitorList">
         <div class="Header">
           <h1 class="Header__title"># Ranking</h1>
           <img class="Header__image" src="@/assets/images/trophy.svg">
+          <h4 :class="{label: true, connect: isActive, close: !isActive}">{{ label_status }}</h4>
         </div>
         <transition-group
           appear
@@ -16,14 +17,10 @@
           leave-active-class="animated fadeOutLeft"
           :key="show"
         >
-        <DashBoard v-for="(data, index) in testdata" :key="index" :data="data" :rank="index"/>
+        <DashBoard v-for="(info, index) in data" :key="index" :data="info" :rank="index"/>
         </transition-group>
       </div>
     </div>
-        <button @click="updateData">
-    Toggle render
-    </button>
-
   </div>
 </template>
 
@@ -32,50 +29,57 @@ import DashBoard from './components/DashBoard.vue'
 
 export default {
   name: 'App',
+  data() {
+    return {
+      show: true,
+      data: [],
+      label_status: "",
+      isActive: false
+    }
+  },
   components: {
     DashBoard
   },
-  mounted() {
+  mounted: function() {
     this.initWebSocket();
-    //setInterval(this.updateData, 3000);
   },
   methods: {
     initWebSocket() { //初始化weosocket
-      const wsuri = "ws://127.0.0.1:2700";
-      this.websocket = new WebSocket(wsuri);
-      this.websocket.onmessage = this.websocketonmessage;
+      var _this = this;
+
+      const wsuri = "ws://127.0.0.1:5000";
+      let ws = new WebSocket(wsuri);
+
+      ws.onopen = function() {
+        console.log("Open");
+        _this.label_status = "Connected";
+        _this.isActive = true;
+      };
+
+      ws.onerror = function() {
+        console.error('Socket encountered error, Closing socket');
+        ws.close();
+        _this.label_status = "Closed";
+        _this.isActive = false;
+      };
+
+      ws.onclose = function() {
+        _this.label_status = "Connection Closed, Reconnect will be attempted in 1 second...";
+        _this.isActive = false;
+        setTimeout(_this.initWebSocket(), 1000);
+      };
+
+      ws.onmessage = this.updateData;
     },
-    websocketonmessage(e) {
-      //const redata = JSON.parse(e.data);
-      console.log(e.data);
-    },
-    updateData() {
+    updateData(e) {
       this.show = !this.show;
-      this.testdata = [
-        {
-          'user_name': 'daniel',
-          'score': 10
-        },
-        {
-          'user_name': 'kent',
-          'score': 50
-        },
-        {
-          'user_name': 'raix',
-          'score': 30
-        }
-      ].sort(function (a, b) {
+
+      const redata = Object.values(JSON.parse(e.data));
+      this.data = redata.sort(function (a, b) {
          return a.score < b.score ? 1 : -1;
       });
     },
   },
-  data() {
-    return {
-      websocket: null,
-      show: true,
-      testdata: [],
-    }
-  }
 }
 </script>
 
@@ -85,5 +89,27 @@ export default {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   color: #2c3e50;
+}
+
+.label {
+  text-align: end;
+  margin: 0;
+  padding: 5px;
+}
+
+.connect {
+  color: green;
+}
+
+.close {
+  color: red;
+  animation: 1.5s blink alternate;
+  animation-iteration-count: infinite;
+}
+
+@keyframes blink {
+  to {
+    color: transparent;
+  }
 }
 </style>
